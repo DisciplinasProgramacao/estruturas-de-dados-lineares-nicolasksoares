@@ -5,22 +5,20 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.NoSuchElementException;
+import java.util.function.Predicate;
 
 public class App {
 
-    /** Nome do arquivo de dados. O arquivo deve estar localizado na raiz do projeto */
     static String nomeArquivoDados = "produtos.txt";
 
-    /** Scanner para leitura de dados do teclado */
     static Scanner teclado;
 
-    /** Vetor de produtos cadastrados */
     static Produto[] produtosCadastrados;
 
-    /** Quantidade de produtos cadastrados atualmente no vetor */
     static int quantosProdutos = 0;
 
-    /** Fila de pedidos (Armazenamento FIFO por ordem de chegada) */
+    static Pilha<Pedido> pilhaPedidos = new Pilha<>();
+
     static Fila<Pedido> filaPedidos = new Fila<>();
 
     static void limparTela() {
@@ -28,13 +26,11 @@ public class App {
         System.out.flush();
     }
 
-    /** Gera um efeito de pausa na CLI. Espera por um enter para continuar */
     static void pausa() {
         System.out.println("Digite enter para continuar...");
         teclado.nextLine();
     }
 
-    /** Cabeçalho principal da CLI do sistema */
     static void cabecalho() {
         System.out.println("AEDs II COMERCIO DE COISINHAS");
         System.out.println("=============================");
@@ -54,30 +50,23 @@ public class App {
         return valor;
     }
 
-    /** Imprime o menu principal, lê a opção do usuário e a retorna (int).
-     * @return Um inteiro com a opção do usuário.
-     */
     static int menu() {
         cabecalho();
         System.out.println("1 - Listar todos os produtos");
         System.out.println("2 - Procurar por um produto, por codigo");
         System.out.println("3 - Procurar por um produto, por nome");
         System.out.println("4 - Iniciar novo pedido");
-        System.out.println("5 - Fechar pedido");
-        System.out.println("6 - Listar produtos dos pedidos mais recentes");
-        // Adicionando opcoes opcionais para testar a Fila (Tarefas 2, 3 e 4)
-        System.out.println("7 - Valor Medio dos N primeiros pedidos (ValorFinal)");
-        System.out.println("8 - Filtrar pedidos com valor > X (N primeiros)");
+        System.out.println("5 - Fechar pedido (LIFO - Pilha)");
+        System.out.println("6 - Listar produtos dos pedidos mais recentes (Pilha)");
+        System.out.println("7 - Finalizar e Enfileirar Pedido (FIFO - Fila)");
+        System.out.println("8 - Processar Pedido Mais Antigo (Fila)");
+        System.out.println("9 - Valor Medio dos N primeiros pedidos (Fila)");
+        System.out.println("10 - Filtrar pedidos com valor > X (Fila)");
         System.out.println("0 - Sair");
         System.out.print("Digite sua opcao: ");
         return Integer.parseInt(teclado.nextLine());
     }
 
-    /**
-     * Lê os dados de um arquivo-texto e retorna um vetor de produtos.
-     * @param nomeArquivoDados Nome do arquivo de dados a ser aberto.
-     * @return Um vetor com os produtos carregados, ou vazio em caso de problemas de leitura.
-     */
     static Produto[] lerProdutos(String nomeArquivoDados) {
 
         Scanner arquivo = null;
@@ -110,9 +99,6 @@ public class App {
         return produtosCadastrados;
     }
 
-    /** Localiza um produto no vetor de produtos cadastrados, a partir do código de produto informado pelo usuário, e o retorna.
-     * Em caso de não encontrar o produto, retorna null
-     */
     static Produto localizarProduto() {
 
         Produto produto = null;
@@ -133,10 +119,6 @@ public class App {
         return produto;
     }
 
-    /** Localiza um produto no vetor de produtos cadastrados, a partir do nome de produto informado pelo usuário, e o retorna.
-     * A busca não é sensível ao caso. Em caso de não encontrar o produto, retorna null
-     * @return O produto encontrado ou null, caso o produto não tenha sido localizado no vetor de produtos cadastrados.
-     */
     static Produto localizarProdutoDescricao() {
 
         Produto produto = null;
@@ -169,7 +151,6 @@ public class App {
         System.out.println(mensagem);
     }
 
-    /** Lista todos os produtos cadastrados, numerados, um por linha */
     static void listarTodosOsProdutos() {
 
         cabecalho();
@@ -179,10 +160,6 @@ public class App {
         }
     }
 
-    /** * Inicia um novo pedido.
-     * Permite ao usuário escolher e incluir produtos no pedido.
-     * @return O novo pedido
-     */
     public static Pedido iniciarPedido() {
 
         Integer formaPagamento = lerOpcao("Digite a forma de pagamento do pedido (1 para a vista e 2 para a prazo)", Integer.class);
@@ -220,10 +197,7 @@ public class App {
         return pedido;
     }
 
-    /**
-     * Finaliza um pedido, momento no qual ele deve ser armazenado em uma fila de pedidos (FIFO).
-     * @param pedido O pedido que deve ser finalizado.
-     */
+    // Método 5: Pilha LIFO (Projeto 2A - Finalizar e Empilhar)
     public static void finalizarPedido(Pedido pedido) {
 
         if (pedido == null || pedido.getQuantosProdutos() == 0) {
@@ -231,19 +205,67 @@ public class App {
             return;
         }
 
-        filaPedidos.inserir(pedido); // Adiciona o pedido na fila
+        pilhaPedidos.empilhar(pedido);
         System.out.println("--- PEDIDO FINALIZADO (ID: " + pedido.getIdPedido() + ") ---");
-        System.out.println("Pedido adicionado a fila de processamento.");
+        System.out.println("Pedido adicionado a PILHA (LIFO) de pedidos recentes.");
     }
 
-    /**
-     * Lista os produtos dos pedidos mais recentes (na verdade, os que estao no inicio da fila,
-     * pois o processamento de pedidos normalmente segue o FIFO).
-     * Aqui, vamos remover e exibir o pedido mais antigo na fila.
-     */
+    // Método 6: Pilha LIFO (Projeto 2A - Listar)
     public static void listarProdutosPedidosRecentes() {
 
-        System.out.println("\n--- PROCESSANDO PEDIDO MAIS ANTIGO DA FILA ---\n");
+        cabecalho();
+        System.out.println("\n--- LISTANDO PRODUTOS DOS PEDIDOS MAIS RECENTES (PILHA) ---\n");
+
+        Integer numPedidos = lerOpcao("Quantos pedidos mais recentes (N) deseja consultar?", Integer.class);
+        if (numPedidos == null || numPedidos <= 0) return;
+
+        if (pilhaPedidos.vazia()) {
+            System.out.println("A pilha de pedidos esta vazia.");
+            return;
+        }
+
+        try {
+            Pilha<Pedido> pedidosRecentes = pilhaPedidos.subPilha(numPedidos);
+
+            int count = 0;
+            while (!pedidosRecentes.vazia()) {
+                Pedido p = pedidosRecentes.desempilhar();
+                System.out.println("\nPedido ID: " + p.getIdPedido() + " - Valor: R$ " + String.format("%.2f", p.valorFinal()));
+
+                Produto[] produtos = p.getProdutos();
+                for (int i = 0; i < p.getQuantosProdutos(); i++) {
+                    System.out.println("   - " + produtos[i].toString());
+                }
+                count++;
+            }
+            if (count > 0) {
+                System.out.println("\nTotal de " + count + " pedidos recentes listados. A pilha original permanece intacta.");
+            }
+
+        } catch (IllegalArgumentException e) {
+            System.out.println("ERRO: " + e.getMessage());
+        } catch (NoSuchElementException e) {
+            System.out.println("ERRO: Ocorreu um problema ao desempilhar. " + e.getMessage());
+        }
+    }
+
+    // Método 7: Fila FIFO (Projeto 2B - Finalizar e Enfileirar)
+    public static void finalizarPedidoFila(Pedido pedido) {
+
+        if (pedido == null || pedido.getQuantosProdutos() == 0) {
+            System.out.println("Nenhum pedido valido para finalizar.");
+            return;
+        }
+
+        filaPedidos.inserir(pedido);
+        System.out.println("--- PEDIDO FINALIZADO (ID: " + pedido.getIdPedido() + ") ---");
+        System.out.println("Pedido adicionado a FILA (FIFO) de processamento.");
+    }
+
+    // Método 8: Fila FIFO (Projeto 2B - Processar)
+    public static void processarPedidoFila() {
+
+        System.out.println("\n--- PROCESSANDO PEDIDO MAIS ANTIGO DA FILA (FIFO) ---\n");
 
         try {
             Pedido pedidoProcessado = filaPedidos.remover();
@@ -254,18 +276,12 @@ public class App {
         }
     }
 
-    // --- IMPLEMENTACOES ADICIONAIS PARA TESTAR A CLASSE FILA (TAREFAS 2, 3 e 4) ---
-
-    /**
-     * Opcao 7: Calcula e exibe o valor total medio dos N primeiros pedidos na fila.
-     */
-    public static void calcularValorMedioPedidos() {
+    // Método 9: Fila Avançado (Projeto 2B - Valor Médio)
+    public static void calcularValorMedioPedidosFila() {
         Integer N = lerOpcao("Digite a quantidade de primeiros pedidos (N) para calcular o valor medio:", Integer.class);
         if (N == null || N <= 0) return;
 
         try {
-            // Usa o metodo calcularValorMedio da Fila.
-            // A funcao extratora extrai o valorFinal (Double) de cada Pedido.
             double valorMedio = filaPedidos.calcularValorMedio(Pedido::valorFinal, N);
 
             System.out.printf("\n--- VALOR MEDIO DOS %d PRIMEIROS PEDIDOS: R$ %.2f ---\n", N, valorMedio);
@@ -275,20 +291,16 @@ public class App {
         }
     }
 
-    /**
-     * Opcao 8: Filtra e exibe os N primeiros pedidos com valor total acima de um determinado valor (X).
-     */
-    public static void filtrarPedidosPorValor() {
+    // Método 10: Fila Avançado (Projeto 2B - Filtrar)
+    public static void filtrarPedidosPorValorFila() {
         Integer N = lerOpcao("Digite a quantidade de primeiros pedidos (N) a serem verificados:", Integer.class);
         if (N == null || N <= 0) return;
 
         Double valorMinimo = lerOpcao("Digite o valor minimo (X) para a filtragem:", Double.class);
         if (valorMinimo == null) return;
 
-        // Predicado: Condicao que testa se o valor final do Pedido e maior que o valorMinimo (X).
         Predicate<Pedido> condicao = p -> p.valorFinal() > valorMinimo;
 
-        // Filtra os pedidos e recebe uma nova fila.
         Fila<Pedido> pedidosFiltrados = filaPedidos.filtrar(condicao, N);
 
         System.out.printf("\n--- PEDIDOS FILTRADOS (Valor > R$ %.2f entre os %d primeiros) ---\n", valorMinimo, N);
@@ -298,7 +310,6 @@ public class App {
             return;
         }
 
-        // Para listar os pedidos na fila filtrada, removemos um por um.
         int count = 0;
         while (!pedidosFiltrados.vazia()) {
             System.out.println("\nPedido " + (++count) + ":");
@@ -306,7 +317,7 @@ public class App {
         }
     }
 
-    // --- MAIN METHOD ---
+
     public static void main(String[] args) {
 
         teclado = new Scanner(System.in, Charset.forName("UTF-8"));
@@ -326,8 +337,10 @@ public class App {
                 case 4 -> pedido = iniciarPedido();
                 case 5 -> finalizarPedido(pedido);
                 case 6 -> listarProdutosPedidosRecentes();
-                case 7 -> calcularValorMedioPedidos(); // Opcao extra
-                case 8 -> filtrarPedidosPorValor();    // Opcao extra
+                case 7 -> finalizarPedidoFila(pedido);
+                case 8 -> processarPedidoFila();
+                case 9 -> calcularValorMedioPedidosFila();
+                case 10 -> filtrarPedidosPorValorFila();
             }
             if (opcao != 0) {
                 pausa();

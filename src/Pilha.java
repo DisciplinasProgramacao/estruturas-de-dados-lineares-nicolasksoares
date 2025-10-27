@@ -33,28 +33,43 @@ public class Pilha<E> {
 	public E consultarTopo() {
 
 		if (vazia()) {
-			throw new NoSuchElementException("Nao há nenhum item na pilha!");
+			throw new NoSuchElementException("Nao ha nenhum item na pilha!");
 		}
 
 		return topo.getItem();
 
 	}
 
-	/**
-	 * Cria e devolve uma nova pilha contendo os primeiros numItens elementos
-	 * do topo da pilha atual.
-	 * 
-	 * Os elementos são mantidos na mesma ordem em que estavam na pilha original.
-	 * Caso a pilha atual possua menos elementos do que o valor especificado,
-	 * uma exceção será lançada.
-	 *
-	 * @param numItens o número de itens a serem copiados da pilha original.
-	 * @return uma nova instância de Pilha<E> contendo os numItens primeiros elementos.
-	 * @throws IllegalArgumentException se a pilha não contém numItens elementos.
-	 */
 	public Pilha<E> subPilha(int numItens) {
-		
-		// TODO
-		return null;
+
+		if (numItens < 0) {
+			throw new IllegalArgumentException("O numero de itens deve ser positivo.");
+		}
+
+		Pilha<E> sub = new Pilha<E>();
+		Pilha<E> auxiliar = new Pilha<E>();
+
+		Celula<E> atual = this.topo;
+		int count = 0;
+
+		while (atual != this.fundo && count < numItens) {
+			if (atual.getItem() == null) {
+				break;
+			}
+
+			auxiliar.empilhar(atual.getItem());
+			atual = atual.getProximo();
+			count++;
+		}
+
+		if (count < numItens) {
+			throw new IllegalArgumentException("A pilha original nao contem " + numItens + " elementos.");
+		}
+
+		while (!auxiliar.vazia()) {
+			sub.empilhar(auxiliar.desempilhar());
+		}
+
+		return sub;
 	}
 }
