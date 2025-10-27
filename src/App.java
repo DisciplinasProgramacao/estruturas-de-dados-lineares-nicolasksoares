@@ -1,352 +1,303 @@
 import java.nio.charset.Charset;
 import java.time.LocalDate;
 import java.util.Scanner;
+import java.util.function.Function;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.NoSuchElementException;
-import java.util.function.Predicate;
 
 public class App {
 
-    static String nomeArquivoDados = "produtos.txt";
-
+	/** Nome do arquivo de dados. O arquivo deve estar localizado na raiz do projeto */
+    static String nomeArquivoDados;
+    
+    /** Scanner para leitura de dados do teclado */
     static Scanner teclado;
 
+    /** Vetor de produtos cadastrados */
     static Produto[] produtosCadastrados;
 
+    /** Quantidade de produtos cadastrados atualmente no vetor */
     static int quantosProdutos = 0;
 
-    static Pilha<Pedido> pilhaPedidos = new Pilha<>();
-
-    static Fila<Pedido> filaPedidos = new Fila<>();
-
+    /** Pilha de pedidos */
+    /** Lista de pedidos */
+    static Lista<Pedido> ListaPedidos = new Lista<>();
+        
     static void limparTela() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
     }
 
+    /** Gera um efeito de pausa na CLI. Espera por um enter para continuar */
     static void pausa() {
         System.out.println("Digite enter para continuar...");
         teclado.nextLine();
     }
 
+    /** Cabeçalho principal da CLI do sistema */
     static void cabecalho() {
-        System.out.println("AEDs II COMERCIO DE COISINHAS");
+        System.out.println("AEDs II COMÉRCIO DE COISINHAS");
         System.out.println("=============================");
     }
-
+   
     static <T extends Number> T lerOpcao(String mensagem, Class<T> classe) {
-
-        T valor;
-
-        System.out.println(mensagem);
-        try {
+        
+    	T valor;
+        
+    	System.out.println(mensagem);
+    	try {
             valor = classe.getConstructor(String.class).newInstance(teclado.nextLine());
-        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException
-                 | InvocationTargetException | NoSuchMethodException | SecurityException e) {
+        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException 
+        		| InvocationTargetException | NoSuchMethodException | SecurityException e) {
             return null;
         }
         return valor;
     }
-
-    static int menu() {
+    
+    /** Imprime o menu principal, lê a opção do usuário e a retorna (int).
+     * @return Um inteiro com a opção do usuário.
+     */
+   static int menu() {
         cabecalho();
         System.out.println("1 - Listar todos os produtos");
-        System.out.println("2 - Procurar por um produto, por codigo");
+        System.out.println("2 - Procurar por um produto, por código");
         System.out.println("3 - Procurar por um produto, por nome");
         System.out.println("4 - Iniciar novo pedido");
-        System.out.println("5 - Fechar pedido (LIFO - Pilha)");
-        System.out.println("6 - Listar produtos dos pedidos mais recentes (Pilha)");
-        System.out.println("7 - Finalizar e Enfileirar Pedido (FIFO - Fila)");
-        System.out.println("8 - Processar Pedido Mais Antigo (Fila)");
-        System.out.println("9 - Valor Medio dos N primeiros pedidos (Fila)");
-        System.out.println("10 - Filtrar pedidos com valor > X (Fila)");
+        System.out.println("5 - Finalizar pedido (e adicionar à lista)"); 
+        System.out.println("6 - Exibir o faturamento do comércio de produtos");
+        System.out.println("7 - Exibir a quantidade de pedidos realizados em um determinado período");
         System.out.println("0 - Sair");
-        System.out.print("Digite sua opcao: ");
+        System.out.print("Digite sua opção: ");
         return Integer.parseInt(teclado.nextLine());
     }
-
+    
+    /**
+     * Lê os dados de um arquivo-texto e retorna um vetor de produtos. Arquivo-texto no formato
+     * N  (quantidade de produtos) <br/>
+     * tipo;descrição;preçoDeCusto;margemDeLucro;[dataDeValidade] <br/>
+     * Deve haver uma linha para cada um dos produtos. Retorna um vetor vazio em caso de problemas com o arquivo.
+     * @param nomeArquivoDados Nome do arquivo de dados a ser aberto.
+     * @return Um vetor com os produtos carregados, ou vazio em caso de problemas de leitura.
+     */
     static Produto[] lerProdutos(String nomeArquivoDados) {
-
-        Scanner arquivo = null;
-        int numProdutos;
-        String linha;
-        Produto produto;
-        Produto[] produtosCadastrados;
-
-        try {
-            arquivo = new Scanner(new File(nomeArquivoDados), Charset.forName("UTF-8"));
-
-            numProdutos = Integer.parseInt(arquivo.nextLine());
-            produtosCadastrados = new Produto[numProdutos];
-
-            for (int i = 0; i < numProdutos; i++) {
-                linha = arquivo.nextLine();
-                produto = Produto.criarDoTexto(linha);
-                produtosCadastrados[i] = produto;
-            }
-            quantosProdutos = numProdutos;
-
-        } catch (IOException excecaoArquivo) {
-            produtosCadastrados = null;
-        } finally {
-            if (arquivo != null) {
-                arquivo.close();
-            }
-        }
-
-        return produtosCadastrados;
+    	
+    	Scanner arquivo = null;
+    	int numProdutos;
+    	String linha;
+    	Produto produto;
+    	Produto[] produtosCadastrados;
+    	
+    	try {
+    		arquivo = new Scanner(new File(nomeArquivoDados), Charset.forName("UTF-8"));
+    		
+    		numProdutos = Integer.parseInt(arquivo.nextLine());
+    		produtosCadastrados = new Produto[numProdutos];
+    		
+    		for (int i = 0; i < numProdutos; i++) {
+    			linha = arquivo.nextLine();
+    			produto = Produto.criarDoTexto(linha);
+    			produtosCadastrados[i] = produto;
+    		}
+    		quantosProdutos = numProdutos;
+    		
+    	} catch (IOException excecaoArquivo) {
+    		produtosCadastrados = null;
+    	} finally {
+    if (arquivo != null) {
+        arquivo.close();
     }
+}
 
+    	
+    	return produtosCadastrados;
+    }
+    
+    /** Localiza um produto no vetor de produtos cadastrados, a partir do código de produto informado pelo usuário, e o retorna. 
+     *  Em caso de não encontrar o produto, retorna null 
+     */
     static Produto localizarProduto() {
-
-        Produto produto = null;
-        Boolean localizado = false;
-
-        cabecalho();
-        System.out.println("Localizando um produto...");
-        Integer idProduto = lerOpcao("Digite o codigo identificador do produto desejado: ", Integer.class);
-        if (idProduto == null) return null;
-
+        
+    	Produto produto = null;
+    	Boolean localizado = false;
+    	
+    	cabecalho();
+    	System.out.println("Localizando um produto...");
+        int idProduto = lerOpcao("Digite o código identificador do produto desejado: ", Integer.class);
         for (int i = 0; (i < quantosProdutos && !localizado); i++) {
-            if (produtosCadastrados[i].hashCode() == idProduto) {
-                produto = produtosCadastrados[i];
-                localizado = true;
-            }
+        	if (produtosCadastrados[i].hashCode() == idProduto) {
+        		produto = produtosCadastrados[i];
+        		localizado = true;
+        	}
         }
-
-        return produto;
+        
+        return produto;   
     }
+   
 
+
+
+
+
+    /** Localiza um produto no vetor de produtos cadastrados, a partir do nome de produto informado pelo usuário, e o retorna. 
+     *  A busca não é sensível ao caso. Em caso de não encontrar o produto, retorna null
+     *  @return O produto encontrado ou null, caso o produto não tenha sido localizado no vetor de produtos cadastrados.
+     */
     static Produto localizarProdutoDescricao() {
-
-        Produto produto = null;
-        Boolean localizado = false;
-        String descricao;
-
-        cabecalho();
-        System.out.println("Localizando um produto...");
-        System.out.println("Digite o nome ou a descricao do produto desejado:");
+        
+    	Produto produto = null;
+    	Boolean localizado = false;
+    	String descricao;
+    	
+    	cabecalho();
+    	System.out.println("Localizando um produto...");
+    	System.out.println("Digite o nome ou a descrição do produto desejado:");
         descricao = teclado.nextLine();
         for (int i = 0; (i < quantosProdutos && !localizado); i++) {
-            if (produtosCadastrados[i].descricao.equalsIgnoreCase(descricao)) {
-                produto = produtosCadastrados[i];
-                localizado = true;
-            }
+        	if (produtosCadastrados[i].descricao.equals(descricao)) {
+        		produto = produtosCadastrados[i];
+        		localizado = true;
+    		}
         }
-
+        
         return produto;
     }
-
+    
     private static void mostrarProduto(Produto produto) {
-
+    	
         cabecalho();
-        String mensagem = "Dados invalidos para o produto ou produto nao encontrado!";
-
+        String mensagem = "Dados inválidos para o produto!";
+        
         if (produto != null){
             mensagem = String.format("Dados do produto:\n%s", produto);
         }
-
+        
         System.out.println(mensagem);
     }
-
+    
+    /** Lista todos os produtos cadastrados, numerados, um por linha */
     static void listarTodosOsProdutos() {
-
+    	
         cabecalho();
         System.out.println("\nPRODUTOS CADASTRADOS:");
         for (int i = 0; i < quantosProdutos; i++) {
-            System.out.println(String.format("%02d - %s", (i + 1), produtosCadastrados[i].toString()));
+        	System.out.println(String.format("%02d - %s", (i + 1), produtosCadastrados[i].toString()));
         }
     }
-
+    
+    /** 
+     * Inicia um novo pedido.
+     * Permite ao usuário escolher e incluir produtos no pedido.
+     * @return O novo pedido
+     */
     public static Pedido iniciarPedido() {
-
-        Integer formaPagamento = lerOpcao("Digite a forma de pagamento do pedido (1 para a vista e 2 para a prazo)", Integer.class);
-        if (formaPagamento == null || (formaPagamento != 1 && formaPagamento != 2)) {
-            System.out.println("Forma de pagamento invalida. Pedido cancelado.");
-            return null;
-        }
-
-        Pedido pedido = new Pedido(LocalDate.now(), formaPagamento);
-        Produto produto;
-        Integer numProdutos = lerOpcao("Quantos produtos serao incluidos no pedido?", Integer.class);
-        if (numProdutos == null || numProdutos <= 0) {
-            System.out.println("Nenhum produto a ser incluido. Pedido cancelado.");
-            return null;
-        }
-
-        listarTodosOsProdutos();
-        System.out.println("\nIncluindo produtos no pedido...");
-
+    	
+    	int formaPagamento = lerOpcao("Digite a forma de pagamento do pedido, sendo 1 para pagamento à vista e 2 para pagamento a prazo", Integer.class);
+    	Pedido pedido = new Pedido(LocalDate.now(), formaPagamento);
+    	Produto produto;
+    	int numProdutos;
+    	
+    	listarTodosOsProdutos();
+    	System.out.println("Incluindo produtos no pedido...");
+    	numProdutos = lerOpcao("Quantos produtos serão incluídos no pedido?", Integer.class);
         for (int i = 0; i < numProdutos; i++) {
-            produto = localizarProdutoDescricao();
-            if (produto == null) {
-                System.out.println("Produto nao encontrado. Tentando novamente.");
-                i--;
-            } else {
-                if(pedido.incluirProduto(produto)) {
-                    System.out.println("Produto incluido: " + produto.descricao);
-                } else {
-                    System.out.println("Limite maximo de produtos por pedido atingido.");
-                    break;
-                }
-            }
+        	produto = localizarProdutoDescricao();
+        	if (produto == null) {
+        		System.out.println("Produto não encontrado");
+        		i--;
+        	} else {
+        		pedido.incluirProduto(produto);
+        	}
         }
-
-        return pedido;
+    	
+    	return pedido;
     }
-
-    // Método 5: Pilha LIFO (Projeto 2A - Finalizar e Empilhar)
-    public static void finalizarPedido(Pedido pedido) {
-
-        if (pedido == null || pedido.getQuantosProdutos() == 0) {
-            System.out.println("Nenhum pedido valido para finalizar.");
-            return;
-        }
-
-        pilhaPedidos.empilhar(pedido);
-        System.out.println("--- PEDIDO FINALIZADO (ID: " + pedido.getIdPedido() + ") ---");
-        System.out.println("Pedido adicionado a PILHA (LIFO) de pedidos recentes.");
+    public static void obterFaturamento() {
+    	
+    	cabecalho();
+    	System.out.println("Calculando faturamento...");
+    	
+    	// Função que extrai o valor final do pedido (Double)
+        Function<Pedido, Double> extratorValorFinal = Pedido::valorFinal; 
+        
+        double faturamento = ListaPedidos.obterSoma(extratorValorFinal);
+        
+        // Formata para moeda corrente
+        java.text.NumberFormat moeda = java.text.NumberFormat.getCurrencyInstance();
+        
+        System.out.println("Faturamento do comércio de produtos: " + moeda.format(faturamento));
     }
-
-    // Método 6: Pilha LIFO (Projeto 2A - Listar)
-    public static void listarProdutosPedidosRecentes() {
-
-        cabecalho();
-        System.out.println("\n--- LISTANDO PRODUTOS DOS PEDIDOS MAIS RECENTES (PILHA) ---\n");
-
-        Integer numPedidos = lerOpcao("Quantos pedidos mais recentes (N) deseja consultar?", Integer.class);
-        if (numPedidos == null || numPedidos <= 0) return;
-
-        if (pilhaPedidos.vazia()) {
-            System.out.println("A pilha de pedidos esta vazia.");
-            return;
-        }
-
+    public static void contarPedidosPorData() {
+    	
+    	cabecalho();
+    	System.out.println("Contando pedidos por data...");
+    	
+        java.time.format.DateTimeFormatter formatoData = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        
+        System.out.println("Informe a data inicial dos pedidos (dd/MM/yyyy):");
+        String dataInicialStr = teclado.nextLine();
+        
+        System.out.println("Informe a data final dos pedidos (dd/MM/yyyy):");
+        String dataFinalStr = teclado.nextLine();
+        
+        LocalDate dataInicial, dataFinal;
         try {
-            Pilha<Pedido> pedidosRecentes = pilhaPedidos.subPilha(numPedidos);
-
-            int count = 0;
-            while (!pedidosRecentes.vazia()) {
-                Pedido p = pedidosRecentes.desempilhar();
-                System.out.println("\nPedido ID: " + p.getIdPedido() + " - Valor: R$ " + String.format("%.2f", p.valorFinal()));
-
-                Produto[] produtos = p.getProdutos();
-                for (int i = 0; i < p.getQuantosProdutos(); i++) {
-                    System.out.println("   - " + produtos[i].toString());
-                }
-                count++;
-            }
-            if (count > 0) {
-                System.out.println("\nTotal de " + count + " pedidos recentes listados. A pilha original permanece intacta.");
-            }
-
-        } catch (IllegalArgumentException e) {
-            System.out.println("ERRO: " + e.getMessage());
-        } catch (NoSuchElementException e) {
-            System.out.println("ERRO: Ocorreu um problema ao desempilhar. " + e.getMessage());
-        }
-    }
-
-    // Método 7: Fila FIFO (Projeto 2B - Finalizar e Enfileirar)
-    public static void finalizarPedidoFila(Pedido pedido) {
-
-        if (pedido == null || pedido.getQuantosProdutos() == 0) {
-            System.out.println("Nenhum pedido valido para finalizar.");
+            dataInicial = LocalDate.parse(dataInicialStr, formatoData);
+            dataFinal = LocalDate.parse(dataFinalStr, formatoData);
+        } catch (java.time.format.DateTimeParseException e) {
+            System.out.println("Formato de data inválido! Use dd/MM/yyyy.");
             return;
         }
 
-        filaPedidos.inserir(pedido);
-        System.out.println("--- PEDIDO FINALIZADO (ID: " + pedido.getIdPedido() + ") ---");
-        System.out.println("Pedido adicionado a FILA (FIFO) de processamento.");
+        // Predicado: Pedido tem data estritamente posterior à data inicial E anterior à data final
+        java.util.function.Predicate<Pedido> condicionalData = 
+            pedido -> pedido.getDataPedido().isAfter(dataInicial) && pedido.getDataPedido().isBefore(dataFinal);
+            
+        int quantidade = ListaPedidos.contar(condicionalData);
+        
+        System.out.println("Quantidade de pedidos realizados entre as datas informadas: " + quantidade);
     }
-
-    // Método 8: Fila FIFO (Projeto 2B - Processar)
-    public static void processarPedidoFila() {
-
-        System.out.println("\n--- PROCESSANDO PEDIDO MAIS ANTIGO DA FILA (FIFO) ---\n");
-
-        try {
-            Pedido pedidoProcessado = filaPedidos.remover();
-            System.out.println(pedidoProcessado.toString());
-            System.out.println("\n*** Pedido removido da fila para processamento/entrega. ***");
-        } catch (NoSuchElementException e) {
-            System.out.println("A fila de pedidos esta vazia.");
-        }
+    
+    /**
+     * Finaliza um pedido, momento no qual ele deve ser armazenado em uma pilha de pedidos.
+     * @param pedido O pedido que deve ser finalizado.
+     */
+   public static void finalizarPedido(Pedido pedido) {
+    	// Insere o pedido no final da lista
+    	ListaPedidos.inserir(pedido, ListaPedidos.tamanho()); 
+        System.out.println("Pedido finalizado e adicionado à lista!");
     }
-
-    // Método 9: Fila Avançado (Projeto 2B - Valor Médio)
-    public static void calcularValorMedioPedidosFila() {
-        Integer N = lerOpcao("Digite a quantidade de primeiros pedidos (N) para calcular o valor medio:", Integer.class);
-        if (N == null || N <= 0) return;
-
-        try {
-            double valorMedio = filaPedidos.calcularValorMedio(Pedido::valorFinal, N);
-
-            System.out.printf("\n--- VALOR MEDIO DOS %d PRIMEIROS PEDIDOS: R$ %.2f ---\n", N, valorMedio);
-
-        } catch (IllegalArgumentException e) {
-            System.out.println("ERRO: " + e.getMessage());
-        }
+    public static void listarProdutosPedidosPrimeiro() {
+    	 
+       ////to do //////
     }
-
-    // Método 10: Fila Avançado (Projeto 2B - Filtrar)
-    public static void filtrarPedidosPorValorFila() {
-        Integer N = lerOpcao("Digite a quantidade de primeiros pedidos (N) a serem verificados:", Integer.class);
-        if (N == null || N <= 0) return;
-
-        Double valorMinimo = lerOpcao("Digite o valor minimo (X) para a filtragem:", Double.class);
-        if (valorMinimo == null) return;
-
-        Predicate<Pedido> condicao = p -> p.valorFinal() > valorMinimo;
-
-        Fila<Pedido> pedidosFiltrados = filaPedidos.filtrar(condicao, N);
-
-        System.out.printf("\n--- PEDIDOS FILTRADOS (Valor > R$ %.2f entre os %d primeiros) ---\n", valorMinimo, N);
-
-        if (pedidosFiltrados.vazia()) {
-            System.out.println("Nenhum pedido atende ao criterio.");
-            return;
-        }
-
-        int count = 0;
-        while (!pedidosFiltrados.vazia()) {
-            System.out.println("\nPedido " + (++count) + ":");
-            System.out.println(pedidosFiltrados.remover().toString());
-        }
-    }
-
-
-    public static void main(String[] args) {
-
-        teclado = new Scanner(System.in, Charset.forName("UTF-8"));
-
+    
+    
+	public static void main(String[] args) {
+		
+		teclado = new Scanner(System.in, Charset.forName("UTF-8"));
+        
+		nomeArquivoDados = "produtos.txt";
         produtosCadastrados = lerProdutos(nomeArquivoDados);
-
+        
         Pedido pedido = null;
-
+        
         int opcao = -1;
-
-        do{
-            opcao = menu();
+      
+        do{            opcao = menu();
             switch (opcao) {
                 case 1 -> listarTodosOsProdutos();
                 case 2 -> mostrarProduto(localizarProduto());
                 case 3 -> mostrarProduto(localizarProdutoDescricao());
                 case 4 -> pedido = iniciarPedido();
                 case 5 -> finalizarPedido(pedido);
-                case 6 -> listarProdutosPedidosRecentes();
-                case 7 -> finalizarPedidoFila(pedido);
-                case 8 -> processarPedidoFila();
-                case 9 -> calcularValorMedioPedidosFila();
-                case 10 -> filtrarPedidosPorValorFila();
+                case 6 -> obterFaturamento(); // Nova opção
+                case 7 -> contarPedidosPorData(); // Nova opção
+            
             }
-            if (opcao != 0) {
-                pausa();
-            }
-        }while(opcao != 0);
+            pausa();
+        }while(opcao != 0);       
 
-        teclado.close();
+        teclado.close();    
     }
 }
